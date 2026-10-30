@@ -17,7 +17,7 @@ Charter Information
    :widths: 30 70
 
    * - **Charter version**
-     - 0.3
+     - 0.31
 
    * - **Date**
      - 2026-10-30
@@ -67,14 +67,23 @@ Charter Information
 ..
    MANDATORY
 
-A verified identity and a valid authorization say little about what an AI agent will do on a given task. Four problems follow.
+A verified identity and a valid authorization say little about what an AI agent will do on a given task. At the same time, the non-deterministic, creative nature of AI agents is the characteristic trait that distinguishes them from usual software. Four problems follow:
 
-1. **Identity does not determine behaviour.** An agent that passes every identity and authorization check can still take an action outside the authority it was granted.
-2. **Agents change.** The model, tools, memory and composition behind an agent change over its lifetime, so an identity issued at one point says less about the agent that acts later.
-3. **Revocation does not reliably stop conduct.** Revoking an identity takes effect only where a relying party checks it again before the next action.
-4. **Determinations are not portable.** Where an action is checked at all, the result is usually an internal log entry that another party can neither recompute nor rely on.
+1. **For AI Agents, identity does not determine behaviour.** An AI agent that passes every identity and authorization check can still take an action outside the authority it was granted.
+2. **Agents morph.** For the AI agents, a re-run is generally not the same as the run: the very same agent might give a different response to the same repeated request, even if its model, used tools and composition do not change. If major components or agent configuration change (e.g., used model, guard rails, etc), then such changed response is well documented and can be expected (e.g., varying accuracy and precision for various models; various configurations might consider or ignore exchange history, etc). In general, an identity issued at one point says less about the agent that acts later.
+..
+   [AH] Comment: it seems to be that 1 and 2 is semanticallythe same. However, we do miss a point on enforcement. We have a point on revocation and audit/check afterwards as 3. and 4. below, but we do not have anything on the actual enforcement or on the expression of it, correct?
 
-Existing work establishes who an agent is (ITU-T X.1285, IETF WIMSE), what it may access in general (XACML and attribute-based access control) and what platform it runs on (IETF RATS). None of it determines, at the moment a specific action is taken, whether that action conforms to the authority it was taken under, in a form a third party can check. The working group addresses that gap. Its central object is bounded: one action, checked when it is taken against a pinned reference, producing a verdict that a relying party can recompute.
+3. **Revocation does not reliably stop conduct.** Revoking an identity takes effect only where a relying party checks it again before the next action. Besides, revoking rights from an agent might limit its operational freedom to an extent, where its sheer presence might be questioned: one designs a ICT system with agents because of "known unknowns". Trying to push everything within the known action space contradicts the departing point of known unknowns in the system.
+4. **Determinations are not portable.** Where an action can be checked at all, the result is usually an internal log entry that another party can neither recompute nor rely on.
+
+Existing work proposes agent identity (ITU-T X.1285, X.402, IETF WIMSE, IETF AgentProto, W3C Agentic Web Charter, Poppy/PACT), what it may access in general (XACML and attribute-based access control, PACT JWT) and what platform it runs on (IETF RATS, TC, Secure Enclaves). None of this solves the problem with morphing AI agents vs. a security policy expression presented above. Besides, none of the works above determines, at the moment a specific action is taken, whether that action conforms to the authority it was taken under, in a form a third party can check. The working group addresses the gap with expressing and enforcing a security policy where objects and subjects could be AI agents.
+..
+   [AH] Comment: the original text saying that the gap is that the third party cannot check sounds too much like audit or remote attestation terrain. The original scope of this WG was larger and different from it. Whether a 3rd party can check it is actually secondary to us (and primary to WG1). We are interested in how policy enforcement can be done with agents. I added a phrase before and changed the phrase with the gap, but I still think it should be reviewed. 
+
+Its central object is bounded: one action, checked when it is taken against a pinned reference, producing a verdict that a relying party can recompute.
+..
+   [AH] Comment: not sure about this single target either.
 
 
 3. Goals
@@ -83,15 +92,18 @@ Existing work establishes who an agent is (ITU-T X.1285, IETF WIMSE), what it ma
 ..
    MANDATORY
 
-* The working group will describe the problem: terminology, threat cases and a requirements set against which every solution path is assessed.
+* The working group will describe the problem: terminology, environment, threat cases and a requirements set against which every solution path is assessed.
 
 * The working group will specify requirements for the action-time verdict: its vocabulary and semantics, adjudication when obligations collide, the attested absence of evaluation, and appraisal of a carried verdict by a relying party. It will specify requirements, not encodings or protocols.
 
-* The working group will describe and compare solution paths against the shared requirements, starting with identity based on design properties that stay fixed and with security policy expressed as intent independent of the actors involved.
+..
+   [AH] Comment: Action-Time verdict is too narrow for me. The follow up text potentially too broad. What we need is: how do we enforce a classically expressed security policy with agents as subjects/objects OR how do we write the security policy such that it can be enforced? Am I reading it wrong?
+
+* The working group will describe and compare solution paths against the shared requirements, starting with identity based on (unchangeable) agent design properties and continuing to a security policy expressed as intent independent of the subjects/objects involved but concentrating on the wanted and unwanted outcomes instead.
 
 * The working group will maintain shared evaluation fixtures so that paths can be compared on the same cases.
 
-* The working group will build on ITU-T X.1285, OASIS XACML, IRTF RFC 9315, IETF RATS and EAT, and IETF WIMSE wherever they apply.
+* The working group will consider previous efforts and state of the art such as, e.g., ITU-T X.1285, OASIS XACML, IRTF RFC 9315, IETF RATS and EAT, and IETF WIMSE wherever they apply. Other state of the art will be added as the WG starts its work.
 
 
 4. Scope and Non-Goals
@@ -102,11 +114,16 @@ In Scope
 
 * Characterization of the identity-behaviour-enforcement mismatch, grounded in use cases submitted to FG-TIDA.
 
-* Requirements for the action-time verdict: permit, remediate, block, escalate and indeterminate; attested absence as a statement outside the verdicts; the handling of an escalated action while it is pending; and the verdict when the connection an action relies on has been withdrawn.
+* Requirements for the action-time verdict: identify, fix, limit, permit, remediate, block, escalate and indeterminate; attested absence as a statement outside the verdicts; the handling of an escalated action while it is pending; and the verdict when the connection an action relies on has been withdrawn.
+
+..
+   [AH] Comment: not sure I understand all of the above: "verdict when the connection an action relies on has been withdrawn"? Is a bit hard to process, but overall it sounds still too much as evidence for the aftermath.
+
+* State of the art of the relevant standardization and research efforts on agent identity and cryptographic methods on behavioural enforcement.
 
 * Identity schemes for agents whose composition changes, based on design invariants and their dependencies.
 
-* Expression of security policy as intent, and the coexistence of intent-based and classical policies at a common enforcement point.
+* Expression of security policy as intent, and the coexistence of intent-based and legacy security policies at a common enforcement point.
 
 * Further solution paths proposed for the same problem, such as least-agency enforcement with structural and semantic predicates and cryptographic enforcement boundaries, assessed against the same requirements.
 
@@ -138,6 +155,9 @@ Out of Scope / Non-Goals
 
 * Identity issuance and lifecycle in general are addressed by ITU-T X.1285 and related SG17 work.
 
+..
+   [AH] Comment: good work on that. Thanks!
+
 
 5. Programme of Work and Deliverables
 -------------------------------------
@@ -168,6 +188,9 @@ Out of Scope / Non-Goals
      - Solution paths: description and comparative analysis (technical report)
      - Design-trait identity, intent-expressed policy and its coexistence with classical policy, and further admitted paths, each assessed against deliverable 1.
      - FG-TIDA/themes#4 paths one and two; #6 tasks 1 and 2; #26
+
+..
+   [AH] Comment: should we separate it in two different deliverables? I am thinking that some structured identity is very different from intent-based security policy.
 
    * - 4
      - Shared evaluation fixtures (technical report with versioned fixture set)
@@ -324,3 +347,7 @@ Following completion, the deliverables may be offered as input to ITU-T Study Gr
    * - 0.3
      - 2026-10-30
      - Moved into the WG2 repository; destination of deliverables left open, per the co-chairs' preparation meeting
+
+   * - 0.31
+     - 2026-10-30
+     - Wording changes all over the document, extension to morphing even if SW composition is unchanged as per Theme #4, extension beyond "third party can check", as before the check by a third party comes the question of the enforcement through the second party. Provided some comments in the text, see in edit mode.
