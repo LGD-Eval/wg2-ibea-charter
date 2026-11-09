@@ -29,6 +29,7 @@ PSEUDO = {
 }
 EXT = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".pdf", ".zip", ".md", ".json", ".yml")
 RE_REPO = re.compile(r"https?://(?:www\.)?github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)")
+TRIM = ".,);:'\""
 
 
 def opener():
@@ -65,13 +66,15 @@ def main():
             continue
         text = open(name, encoding="utf-8", errors="replace").read()
         for owner, repo in RE_REPO.findall(text):
-            repo = repo.rstrip(".,);:'\\"")
+            repo = repo.rstrip(TRIM)
             if not repo or owner.lower() in PSEUDO or repo.lower().endswith(EXT):
                 continue
-            entries.setdefault(("%s/%s" % (owner, repo)).lower(), ("%s/%s" % (owner, repo), name))
+            full = "%s/%s" % (owner, repo)
+            entries.setdefault(full.lower(), (full, name))
 
     print("entries: %d" % len(entries))
-    dead, unknown = [], []
+    dead = []
+    unknown = 0
     for key, (full, src) in sorted(entries.items()):
         code, j = call("https://api.github.com/repos/" + full)
         if code in (404, 410, 451):
@@ -79,14 +82,14 @@ def main():
             print("  DEAD    %-58s HTTP %s (%s)" % (full, code, src))
         elif code == 200 and j.get("private"):
             dead.append((full, src, "HTTP 200 但 private=true：外人点开为 404"))
-            print("  PRIVATE %-58s 私有仓，对外人不可见 (%s)" % (full, src))
+            print("  PRIVATE %-58s private repo, invisible to outsiders (%s)" % (full, src))
         elif code is None or code in (403, 429):
-            unknown.append((full, code))
+            unknown += 1
 
     if unknown:
-        print("unreachable-not-dead: %d（网络/限流，不判死链）" % len(unknown))
+        print("unreachable-not-dead: %d (network/rate-limit, not counted as dead)" % unknown)
     if dead:
-        rows = "\n".join("- `%s` —— %s（出现在 %s）" % (f, why, s) for f, s, why in dead)
+        rows = "\n".join("- `%s` — %s（出现在 %s）" % (f, why, s) for f, s, why in dead)
         comment("### link-check 失败：README 里对外人打不开的仓\n\n" + rows +
                 "\n\n修法：换成**公开**活目标，或删掉该行。私有仓不能出现在公开清单里"
                 "（账号令牌自查会显示 200，这里按外人视角判）。")
