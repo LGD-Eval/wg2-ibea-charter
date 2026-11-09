@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-"""README 收录链接体检：抽出所有 github.com/{owner}/{repo}，逐条查它是否真实存在。
+"""README 收录链接体检：抽出所有 github.com/{owner}/{repo}，逐条按「外人视角」查它是否真的能打开。
+
+外人视角 = 匿名/外部安装令牌能看见。因此两种失败：
+  1) 404/410/451 —— 仓不存在（改名、删除、写错）
+  2) HTTP 200 但 private=true —— 私有仓，外人点开就是 404（用账号令牌自查会误判为「正常」）
 
 为什么需要它：清单类仓库没有可执行示例，外人真正会踩的是「点进去 404」。
-判据：任一收录仓链解析为 404/410/451 即 exit 1，让 PR 变红；失败时把死链清单写回 PR 评论
-（CI 日志对外不可读，评论是可核的证据）。
+失败即 exit 1 让 PR 变红，并把死链清单写回 PR 评论（CI 日志对外不可读，评论是可核的证据）。
 不计入仓链：站内伪路径（orgs/users/settings/assets…）、裸图片/文档后缀。
 """
 import json
@@ -22,7 +25,7 @@ PSEUDO = {
     "notifications", "organizations", "pricing", "readme", "search", "security", "settings",
     "site", "sponsors", "support", "team", "topics", "trending", "why-github", "assets",
     "user-attachments", "raw", "blob", "tree", "releases", "issues", "pull", "wiki", "discussions",
-    "codespaces", "copilot", "dashboard", "stars", "collections",
+    "codespaces", "copilot", "dashboard", "stars",
 }
 EXT = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".pdf", ".zip", ".md", ".json", ".yml")
 RE_REPO = re.compile(r"https?://(?:www\.)?github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)")
@@ -49,11 +52,6 @@ def call(url, payload=None, method="GET"):
         return None, {}
 
 
-def probe(full):
-    code, _ = call("https://api.github.com/repos/" + full)
-    return code
-
-
 def comment(body):
     if not (PR and REPO and TOKEN):
         return
@@ -67,31 +65,34 @@ def main():
             continue
         text = open(name, encoding="utf-8", errors="replace").read()
         for owner, repo in RE_REPO.findall(text):
-            repo = repo.rstrip(".,);:'\"")
+            repo = repo.rstrip(".,);:'\\"")
             if not repo or owner.lower() in PSEUDO or repo.lower().endswith(EXT):
                 continue
-            full = "%s/%s" % (owner, repo)
-            entries.setdefault(full.lower(), (full, name))
+            entries.setdefault(("%s/%s" % (owner, repo)).lower(), ("%s/%s" % (owner, repo), name))
 
     print("entries: %d" % len(entries))
     dead, unknown = [], []
     for key, (full, src) in sorted(entries.items()):
-        code = probe(full)
+        code, j = call("https://api.github.com/repos/" + full)
         if code in (404, 410, 451):
-            dead.append((full, src, code))
-            print("  DEAD %-60s %s (%s)" % (full, code, src))
+            dead.append((full, src, "HTTP %s：仓不存在" % code))
+            print("  DEAD    %-58s HTTP %s (%s)" % (full, code, src))
+        elif code == 200 and j.get("private"):
+            dead.append((full, src, "HTTP 200 但 private=true：外人点开为 404"))
+            print("  PRIVATE %-58s 私有仓，对外人不可见 (%s)" % (full, src))
         elif code is None or code in (403, 429):
             unknown.append((full, code))
 
     if unknown:
         print("unreachable-not-dead: %d（网络/限流，不判死链）" % len(unknown))
     if dead:
-        rows = "\n".join("- `%s` → HTTP %s（出现在 %s）" % (f, c, s) for f, s, c in dead)
-        comment("### link-check 失败：README 里有已不存在的仓\n\n" + rows +
-                "\n\n修法：换成活目标，或删掉该行（不能只把链接改成文字，链接必须能直达）。")
-        print("\nFAIL: %d dead repo link(s)" % len(dead))
+        rows = "\n".join("- `%s` —— %s（出现在 %s）" % (f, why, s) for f, s, why in dead)
+        comment("### link-check 失败：README 里对外人打不开的仓\n\n" + rows +
+                "\n\n修法：换成**公开**活目标，或删掉该行。私有仓不能出现在公开清单里"
+                "（账号令牌自查会显示 200，这里按外人视角判）。")
+        print("\nFAIL: %d unreachable-for-outsiders" % len(dead))
         return 1
-    print("OK: all %d repo links resolve" % len(entries))
+    print("OK: all %d repo links open for an outsider" % len(entries))
     return 0
 
 
