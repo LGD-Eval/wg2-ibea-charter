@@ -9,3 +9,5 @@ The working group addresses the mismatch between an AI agent's identity, its beh
 - Charter source: [src/doc/index.rst](src/doc/index.rst)
 - Published web page and PDF: https://fg-tida-wg2.github.io/wg2-ibea-charter/ (once Pages is enabled)
 - How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md). Comments and proposed changes are welcome as issues or pull requests.
+
+| negctl | https://github.com/stevenzhao07/lgd-negctl-does-not-exist-20261110 | negative control |
